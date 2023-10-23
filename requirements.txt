@@ -8,3 +8,5 @@ requests
 httpx
 pre-commit
 black
+python-multipart
+pillow
