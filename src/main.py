@@ -6,6 +6,8 @@ from fastapi import FastAPI, Request, UploadFile, HTTPException, status
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image
+import pytesseract
+import textwrap
 
 from src.settings import settings
 
@@ -22,9 +24,25 @@ def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.post("/")
-def index():
-    return {"messages": "Done"}
+@app.post("/", response_class=HTMLResponse)
+async def ocr(request: Request, file: UploadFile):
+    file_type = pathlib.Path(file.filename).suffix.replace(".", "")
+    if file_type not in VALID_MEDIA_EXTENSIONS:
+        raise HTTPException(
+            detail="Use jpg, jpeg or png.", status_code=status.HTTP_400_BAD_REQUEST
+        )
+    content_stream = io.BytesIO(await file.read())
+    try:
+        image = Image.open(content_stream)
+        preds = pytesseract.image_to_string(image)
+        text = textwrap.fill(preds)
+    except:
+        raise HTTPException(
+            detail="Can not open Image!", status_code=status.HTTP_400_BAD_REQUEST
+        )
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "ocr_text": text}
+    )
 
 
 @app.post("/upload", response_class=FileResponse, status_code=status.HTTP_201_CREATED)

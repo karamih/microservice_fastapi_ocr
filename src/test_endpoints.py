@@ -1,3 +1,4 @@
+import pathlib
 import time
 import shutil
 
@@ -17,13 +18,22 @@ def test_get_index():
 
 
 def test_post_index():
-    response = client.post(url="/")
-    assert response.status_code == 200
-    assert "application/json" in response.headers["content-type"]
+    test_images = BASE_DIR / "images.ocr"
+    for img in test_images.glob("*"):
+        response = client.post(url="/upload", files={"file": open(img, "rb")})
+        try:
+            image = Image.open(img)
+        except:
+            image = None
+        if image is None:
+            assert response.status_code == 400, "image can't send."
+        else:
+            assert response.status_code == 200
+            assert "text/html" in response.headers["content-type"]
 
 
 def test_post_img():
-    test_images = BASE_DIR / "images"
+    test_images = BASE_DIR / "images.test"
     for img in test_images.glob("*"):
         response = client.post(url="/upload", files={"file": open(img, "rb")})
         try:
@@ -41,4 +51,5 @@ def test_post_img():
             assert response.status_code == 201, "everything successfully"
 
     time.sleep(2)
-    shutil.rmtree(UPLOAD_DIR)
+    if pathlib.Path.exists(UPLOAD_DIR):
+        shutil.rmtree(UPLOAD_DIR)
